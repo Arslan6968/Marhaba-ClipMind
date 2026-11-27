@@ -1,0 +1,27 @@
+# Python caches & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+*.egg-info/
+
+# Runtime workspaces & media caches
+clipmind_workspace/
+.sections/
+temp/
+*.tmp
+*.part
+*.ytdl
+.story.*
+
+# Large AI model weights (>100 MB GitHub limit; downloaded automatically on first run)
+clipmind/models/whisper-base/
+clipmind/models/whisper_cache/
+*.bin
+*.gguf
+*.safetensors
+
+# OS artifacts
+.DS_Store
+Thumbs.db
