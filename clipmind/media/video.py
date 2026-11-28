@@ -139,6 +139,43 @@ def create_rendered_check_strip(rendered_mp4: Path, duration: float, out_path: P
     )
 
 
+def create_composite_check_strip(strip_paths: List[Path], out_path: Path, max_width: int = 1200) -> Optional[Path]:
+    """Combines multiple clip check strips vertically into a single `check_all.jpg` for 1-read agent verification."""
+    imgs = []
+    for p in strip_paths:
+        if not p or not Path(p).is_file():
+            continue
+        im = cv2.imread(str(p))
+        if im is None:
+            continue
+        h, w = im.shape[:2]
+        if w > max_width:
+            scale = max_width / float(w)
+            im = cv2.resize(im, (max_width, max(2, int(h * scale))), interpolation=cv2.INTER_AREA)
+            h, w = im.shape[:2]
+        label = Path(p).stem.replace("check_", "")
+        cv2.rectangle(im, (6, max(4, h - 38)), (150, h - 6), (15, 23, 42), -1)
+        cv2.putText(im, label, (14, h - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (245, 190, 50), 2, cv2.LINE_AA)
+        imgs.append(im)
+
+    if not imgs:
+        return None
+    target_w = min(im.shape[1] for im in imgs)
+    pad = np.full((6, target_w, 3), 20, dtype=np.uint8)
+    stacked_parts = []
+    for idx, im in enumerate(imgs):
+        if im.shape[1] != target_w:
+            nh = max(2, int(im.shape[0] * (target_w / float(im.shape[1]))))
+            im = cv2.resize(im, (target_w, nh), interpolation=cv2.INTER_AREA)
+        if idx > 0:
+            stacked_parts.append(pad)
+        stacked_parts.append(im)
+    composite = np.vstack(stacked_parts)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    cv2.imwrite(str(out_path), composite, [cv2.IMWRITE_JPEG_QUALITY, 82])
+    return out_path
+
+
 def create_story_sheets(video_path: Path, t_start: float, t_end: float, dest_dir: Path,
                         every_sec: float = 2.0, cols: int = 4, rows: int = 4, thumb_w: int = 320) -> List[Path]:
     """Creates timestamped 4x4 contact sheet grid(s) for story verification / agent inspection (no Pillow needed)."""

@@ -23,6 +23,17 @@ from ..config import get_settings
 
 
 def _load_agent_answers(pairs: List[Tuple[Path, Path]]) -> Optional[Dict[str, Dict[str, Any]]]:
+    if pairs:
+        batch_file = pairs[0][1].parent / "STORY_ANSWERS.json"
+        if batch_file.is_file():
+            try:
+                raw = batch_file.read_text(encoding="utf-8")
+                obj = extract_json_object(raw) or json.loads(raw)
+                if isinstance(obj, dict) and obj:
+                    return obj
+            except Exception:
+                pass
+
     answers = {}
     for _, a_file in pairs:
         if not a_file.is_file():

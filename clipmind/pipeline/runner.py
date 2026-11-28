@@ -29,7 +29,7 @@ from ..media.audio import (
     compute_db_spikes,
     sync_clip_to_audio,
 )
-from ..media.video import detect_scene_cuts, extract_sampled_frames
+from ..media.video import detect_scene_cuts, extract_sampled_frames, create_composite_check_strip
 from ..media.face import FaceTracker
 from ..understand.asr import SpeechTranscriber
 from ..understand.classifier import classify_content
@@ -98,7 +98,23 @@ def _write_posting_and_manifest(
     language: str,
     peak_rss_mb: float,
     elapsed_sec: float,
-) -> None:
+) -> Optional[Path]:
+    strip_paths = [Path(rc.check_strip_path) for rc in rendered_clips if rc.check_strip_path]
+    composite_strip = create_composite_check_strip(strip_paths, out_dir / "check_all.jpg") if strip_paths else None
+
+    meta_dir = out_dir / ".clip_meta"
+    meta_dir.mkdir(parents=True, exist_ok=True)
+    slim_clips = []
+    for rc in rendered_clips:
+        meta_rel = f".clip_meta/{rc.clip_id}.json"
+        if rc.render_meta:
+            (meta_dir / f"{rc.clip_id}.json").write_text(
+                json.dumps(rc.render_meta, ensure_ascii=False), encoding="utf-8"
+            )
+        entry = rc.model_dump(exclude={"render_meta"})
+        entry["render_meta_file"] = meta_rel
+        slim_clips.append(entry)
+
     manifest = {
         "job_id": job_id,
         "source": source_input,
@@ -112,7 +128,8 @@ def _write_posting_and_manifest(
         "brain_mode": brain_mode,
         "brain_note": brain_note,
         "intent": intent.model_dump(),
-        "rendered_clips": [c.model_dump() for c in rendered_clips],
+        "composite_check_strip": str(composite_strip) if composite_strip else None,
+        "rendered_clips": slim_clips,
         "rejected_candidates": rejected_clips,
         "peak_rss_mb": peak_rss_mb,
         "processing_time_sec": round(elapsed_sec, 2),
@@ -123,6 +140,7 @@ def _write_posting_and_manifest(
         f"# Publishing Pack — {source_info.title}",
         f"**Category:** {genre_info.genre.replace('_', ' ').title()} | **Language:** `{language}` | **Clips Generated:** {len(rendered_clips)}",
         f"**Analysis Mode:** `{brain_mode}` ({brain_note}) | **Processing Time:** {elapsed_sec:.1f}s | **Peak RAM:** {peak_rss_mb:.0f} MB",
+        f"**Visual Check Strip:** `{composite_strip.name}`" if composite_strip else "",
         "",
         "---",
     ]
@@ -154,6 +172,7 @@ def _write_posting_and_manifest(
             lines.append(f"- `{rc['id']}` ({rc['start']:.1f}s-{rc['end']:.1f}s, score {rc['score']}): {rc['reason']}")
 
     (out_dir / "POSTING.md").write_text("\n".join(lines), encoding="utf-8")
+    return composite_strip
 
 
 class ClipMindPipeline:
@@ -402,7 +421,7 @@ class ClipMindPipeline:
         # 9. Write manifest.json & POSTING.md
         elapsed = time.time() - start_time
         peak_rss = max(peak_rss, current_rss_mb())
-        _write_posting_and_manifest(
+        composite_strip = _write_posting_and_manifest(
             out_dir=out_dir,
             job_id=job_id,
             source_input=source_input,
@@ -439,6 +458,7 @@ class ClipMindPipeline:
             "brain_mode": brain_mode,
             "rendered_clips": rendered_clips,
             "rejected_candidates": rejected_clips,
+            "composite_check_strip": str(composite_strip) if composite_strip else None,
             "manifest_file": str(out_dir / "manifest.json"),
             "posting_pack": str(out_dir / "POSTING.md"),
             "peak_rss_mb": peak_rss,
@@ -471,11 +491,16 @@ def remake_clips(
 
     for idx, rc_dict in enumerate(rendered_list, 1):
         rc = RenderedClip.model_validate(rc_dict)
+        rm = dict(rc.render_meta or {})
+        if not rm and rc_dict.get("render_meta_file"):
+            meta_p = Path(output_dir) / rc_dict["render_meta_file"]
+            if meta_p.is_file():
+                rm = json.loads(meta_p.read_text(encoding="utf-8"))
+        rc.render_meta = rm
         if idx not in targets:
             updated_rendered.append(rc)
             continue
 
-        rm = rc.render_meta or {}
         src_file = Path(rm.get("source_file", ""))
         if not src_file.is_file():
             raise PipelineError(f"Cached source video missing for clip {idx}: {src_file}")
@@ -518,7 +543,7 @@ def remake_clips(
         title=data.get("source_title", "Video"),
         channel_name=data.get("channel_name"),
     )
-    _write_posting_and_manifest(
+    comp = _write_posting_and_manifest(
         out_dir=Path(output_dir),
         job_id=data.get("job_id", "remake"),
         source_input=data.get("source", ""),
@@ -534,4 +559,9 @@ def remake_clips(
         peak_rss_mb=current_rss_mb(),
         elapsed_sec=0.0,
     )
-    return {"status": "completed", "output_dir": str(output_dir), "remade_count": len(targets)}
+    return {
+        "status": "completed",
+        "output_dir": str(output_dir),
+        "remade_count": len(targets),
+        "composite_check_strip": str(comp) if comp else None,
+    }

@@ -1,6 +1,7 @@
 """Command-Line Interface for Marhaba ClipMind v3."""
 import argparse
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -82,26 +83,46 @@ def cmd_styles(args):
         print(f"  Punch Zooms : {p.get('punch_ins', False)} | Hook Card: {p.get('hook_card', False)} | Fade: {p.get('fade', False)}")
 
 
+def _is_compact(args) -> bool:
+    return bool(getattr(args, "compact", False) or os.environ.get("CLIPMIND_COMPACT") == "1")
+
+
+def _dump_json(payload, compact: bool) -> str:
+    if compact:
+        return json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return json.dumps(payload, indent=2, ensure_ascii=False)
+
+
 def cmd_probe(args):
     """Probes source metadata and returns adaptive questions if user intent is incomplete."""
+    compact = _is_compact(args)
     info = probe_source(args.url_or_path)
     if not info.is_supported:
         if args.json:
-            print(json.dumps({"supported": False, "error": info.error_message}, indent=2))
+            print(_dump_json({"supported": False, "error": info.error_message}, compact))
         else:
             print(f"[UNSUPPORTED] {info.error_message}")
         return 1
 
     questions = generate_adaptive_questions(info.model_dump(), None, args.intent or "")
     if args.json:
-        print(json.dumps({
-            "supported": True,
-            "source": info.model_dump(),
-            "adaptive_questions": questions,
-        }, indent=2))
+        src_payload = {
+            "title": info.title,
+            "platform": info.platform,
+            "duration": info.duration,
+            "channel_name": info.channel_name,
+            "language": info.language,
+        } if compact else info.model_dump()
+        print(_dump_json({"supported": True, "source": src_payload, "adaptive_questions": questions}, compact))
         return 0
 
     dur_str = f"{int(info.duration // 60)}:{int(info.duration % 60):02d}" if info.duration else "Unknown"
+    if compact:
+        print(f"{info.title} | {info.platform} | {dur_str} | {info.width}x{info.height} | {info.channel_name or '-'}")
+        for idx, q in enumerate(questions, 1):
+            print(f"Q{idx}: {q['question']} ({' / '.join(q['options'])})")
+        return 0
+
     print(f"\nTitle    : {info.title}")
     print(f"Platform : {info.platform} | Duration: {dur_str} | Resolution: {info.width}x{info.height}")
     if info.channel_name:
@@ -119,6 +140,7 @@ def cmd_probe(args):
 
 def cmd_find(args):
     """Workflow B: Discovers creator videos/streams with topic, age, and heat filtering."""
+    compact = _is_compact(args)
     videos = discover_channel_videos(
         args.creator,
         limit=args.count,
@@ -130,7 +152,18 @@ def cmd_find(args):
     )
 
     if args.json:
-        print(json.dumps([v.model_dump() for v in videos], indent=2, ensure_ascii=False))
+        items = [
+            {"title": v.title, "url": v.url, "duration": v.duration, "views": v.views, "heat": v.heat_score}
+            if compact else v.model_dump()
+            for v in videos
+        ]
+        print(_dump_json(items, compact))
+        return 0
+
+    if compact:
+        for idx, v in enumerate(videos, 1):
+            dur_str = f"{int(v.duration // 60)}:{int(v.duration % 60):02d}" if v.duration > 0 else "LIVE"
+            print(f"{idx}. [{dur_str}] {v.title} | {v.reason} | {v.url}")
         return 0
 
     print(f"\nDiscovered {len(videos)} video(s) for '{args.creator}' (topic: {args.topic or 'all'}, sort: {args.sort}):")
@@ -200,6 +233,7 @@ def cmd_trend(args):
 
 def cmd_clip(args):
     """Workflow A: Runs the full clipping pipeline on a single video URL or local file."""
+    compact = _is_compact(args)
     intent = parse_user_query(args.intent or "")
     if args.topic:
         intent.topic = args.topic
@@ -231,7 +265,7 @@ def cmd_clip(args):
         intent.fast_encode = True
 
     output_dir = Path(args.out) if args.out else None
-    if not args.json:
+    if not args.json and not compact:
         print("\n=== Starting Marhaba ClipMind Pipeline ===")
         print(f"Source    : {args.url_or_path}")
         print(f"Objective : {intent.objective} | Topic: {intent.topic or 'Auto'} | Speaker: {intent.speaker or 'Auto'}")
@@ -239,7 +273,7 @@ def cmd_clip(args):
         print("-" * 65)
 
     def progress_callback(stage, pct, msg):
-        if args.json:
+        if args.json or compact:
             return
         pct_int = int(pct * 100)
         bar = "=" * (pct_int // 4) + "-" * (25 - (pct_int // 4))
@@ -255,32 +289,44 @@ def cmd_clip(args):
         )
     except NeedAgentInput as need:
         if args.json:
-            print(json.dumps({
+            print(_dump_json({
                 "status": "awaiting_agent",
-                "task_file": str(need.task_file),
-                "prompts": [{"prompt": str(p), "answer": str(a)} for p, a in need.pairs],
-            }, indent=2))
+                "task_json": str(need.task_file.parent / "STORY_TASK.json"),
+                "answer_json": str(need.task_file.parent / "STORY_ANSWERS.json"),
+            }, compact))
         else:
-            print(f"\n[AGENT MODE PAUSED] Story verification prompts ready at: {need.task_file}")
-            print("Read STORY_TASK.md, inspect contact sheets, write .answer.json files, and re-run this exact command.")
+            print(f"[AGENT MODE PAUSED] Read {need.task_file.parent / 'STORY_TASK.json'}, write {need.task_file.parent / 'STORY_ANSWERS.json'}, and re-run.")
         return AGENT_EXIT_CODE
     except PipelineError as e:
         if args.json:
-            print(json.dumps({"status": "error", "error": str(e)}, indent=2))
+            print(_dump_json({"status": "error", "error": str(e)}, compact))
         else:
             print(f"\n[ERROR] Pipeline failed: {e}", file=sys.stderr)
         return 1
 
     if args.json:
         payload = dict(res)
-        payload["rendered_clips"] = [c.model_dump() for c in res.get("rendered_clips", [])]
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        if getattr(args, "full_json", False):
+            payload["rendered_clips"] = [c.model_dump() for c in res.get("rendered_clips", [])]
+        else:
+            payload["rendered_clips"] = [c.model_dump(exclude={"render_meta"}) for c in res.get("rendered_clips", [])]
+        print(_dump_json(payload, compact))
+        return 0
+
+    if compact:
+        print(
+            f"OK | clips={res['clips_count']} | out={res.get('output_dir', '')} | "
+            f"check_all={res.get('composite_check_strip', '')} | posting={res.get('posting_pack', '')} | "
+            f"manifest={res.get('manifest_file', '')} | ram={res.get('peak_rss_mb', 0):.0f}MB"
+        )
         return 0
 
     print("\n" + "=" * 65)
     print(f"COMPLETED! Generated {res['clips_count']} verified clip(s).")
     if res["clips_count"] > 0:
         print(f"Output Directory   : {res['output_dir']}")
+        if res.get("composite_check_strip"):
+            print(f"Visual Check Strip : {res['composite_check_strip']}")
         print(f"Publishing Manifest: {res['manifest_file']}")
         print(f"Posting Guide      : {res['posting_pack']}")
         print(f"Peak RAM           : {res.get('peak_rss_mb', 0):.0f} MB | Elapsed: {res.get('processing_time_sec', 0):.1f}s")
@@ -303,7 +349,12 @@ def cmd_remake(args):
             aspect_ratio=args.aspect,
             sfx=True if args.sfx else None,
         )
-        print(f"Remade {res['remade_count']} clip(s) successfully in {res['output_dir']}")
+        if getattr(args, "json", False):
+            print(_dump_json(res, _is_compact(args)))
+        elif _is_compact(args):
+            print(f"OK | remade={res['remade_count']} | out={res['output_dir']} | check_all={res.get('composite_check_strip', '')}")
+        else:
+            print(f"Remade {res['remade_count']} clip(s) successfully in {res['output_dir']}")
         return 0
     except PipelineError as e:
         print(f"[ERROR] Remake failed: {e}", file=sys.stderr)
@@ -343,6 +394,7 @@ def main():
     prb.add_argument("url_or_path", help="Video URL or local file path")
     prb.add_argument("--intent", help="Optional initial user instruction")
     prb.add_argument("--json", action="store_true", help="Output JSON")
+    prb.add_argument("--compact", action="store_true", help="Token-lean output")
 
     f = sub.add_parser("find", help="Discover creator videos and streams (Workflow B)")
     f.add_argument("creator", help="Creator name, @handle, or channel URL")
@@ -353,6 +405,7 @@ def main():
     f.add_argument("--include-shorts", action="store_true")
     f.add_argument("--all", action="store_true", help="Include previously clipped URLs")
     f.add_argument("--json", action="store_true")
+    f.add_argument("--compact", action="store_true")
 
     tr = sub.add_parser("trend", help="Analyze YouTube search autocomplete & trend demand for a creator or topic")
     tr.add_argument("target", help="Creator URL, @handle, or topic query")
@@ -360,6 +413,7 @@ def main():
     tr.add_argument("--channel", action="store_true", help="Treat target as creator name search")
     tr.add_argument("--count", type=int, default=8)
     tr.add_argument("--json", action="store_true")
+    tr.add_argument("--compact", action="store_true")
 
     c = sub.add_parser("clip", help="Analyze video and produce verified clips (Workflow A)")
     c.add_argument("url_or_path", help="Video URL or local file path")
@@ -380,6 +434,8 @@ def main():
     c.add_argument("--fast", action="store_true", help="Use hardware h264 encoder if available")
     c.add_argument("--out", help="Custom output directory")
     c.add_argument("--json", action="store_true")
+    c.add_argument("--compact", action="store_true", help="Silence progress spam; print 1-line summary")
+    c.add_argument("--full-json", action="store_true", help="Include heavy per-word timing arrays in --json")
 
     r = sub.add_parser("remake", help="Re-render clips in a finished output directory without re-downloading")
     r.add_argument("folder", help="Output folder containing manifest.json")
@@ -390,6 +446,8 @@ def main():
     r.add_argument("--hook", help="New hook text (*stars* highlight accent words)")
     r.add_argument("--title", help="New title")
     r.add_argument("--sfx", action="store_true")
+    r.add_argument("--json", action="store_true")
+    r.add_argument("--compact", action="store_true")
 
     pr = sub.add_parser("prune", help="Delete cached downloads older than N days")
     pr.add_argument("--days", type=int, default=7)

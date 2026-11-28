@@ -95,14 +95,20 @@ def test_pipeline_end_to_end_and_remake(tmp_path, monkeypatch):
     assert clip0.verification["checks"]["decodes"] is True
     assert Path(clip0.check_strip_path).is_file()
 
-    # Verify manifest and POSTING.md
+    # Verify slim manifest (no inline render_meta/words bloat), sidecar, check_all.jpg, and POSTING.md
     manifest_data = json.loads(Path(res["manifest_file"]).read_text(encoding="utf-8"))
     assert len(manifest_data["rendered_clips"]) >= 1
+    assert "render_meta" not in manifest_data["rendered_clips"][0]
+    sidecar_rel = manifest_data["rendered_clips"][0]["render_meta_file"]
+    assert (out_dir / sidecar_rel).is_file()
+    assert Path(res["composite_check_strip"]).is_file()
+    assert Path(manifest_data["composite_check_strip"]).is_file()
     assert "Publishing Pack" in Path(res["posting_pack"]).read_text(encoding="utf-8")
 
-    # Test instant remake (switch preset to social_media + custom hook)
+    # Test instant remake from sidecar (switch preset to social_media + custom hook)
     rm_res = remake_clips(out_dir, clip_indices=[1], preset="social_media", hook="What is the *secret* behind AI?")
     assert rm_res["remade_count"] == 1
+    assert Path(rm_res["composite_check_strip"]).is_file()
     updated_manifest = json.loads(Path(res["manifest_file"]).read_text(encoding="utf-8"))
     assert updated_manifest["rendered_clips"][0]["preset"] == "social_media"
     assert updated_manifest["rendered_clips"][0]["verification"]["ok"] is True
@@ -123,17 +129,22 @@ def test_pipeline_agent_mode_roundtrip(tmp_path, monkeypatch):
 
     need = excinfo.value
     assert need.task_file.is_file()
-    assert len(need.pairs) >= 1
-    for p_file, a_file in need.pairs:
-        assert p_file.is_file()
-        a_file.write_text(json.dumps({
+    task_json_p = need.task_file.parent / "STORY_TASK.json"
+    assert task_json_p.is_file()
+    task_obj = json.loads(task_json_p.read_text(encoding="utf-8"))
+    assert len(task_obj["candidates"]) >= 1
+    batch_answers = {
+        c["id"]: {
             "verdict": "fix",
             "start": 0.9,
             "end": 17.5,
             "title": "Secret Behind AI Models",
             "hook": "The real *secret* behind AI",
             "reason": "Agent verified complete explanation",
-        }), encoding="utf-8")
+        }
+        for c in task_obj["candidates"]
+    }
+    Path(task_obj["answer_file"]).write_text(json.dumps(batch_answers), encoding="utf-8")
 
     # Re-run and verify answers are consumed without needing re-transcription
     res2 = pipeline.run(str(video_path), user_intent=intent, output_dir=out_dir)
