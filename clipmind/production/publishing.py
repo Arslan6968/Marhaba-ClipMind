@@ -9,7 +9,10 @@ from ..schemas import ClipCandidate, PublishingPackage, ContentClassification
 from ..understand.urdu import is_urdu_text, transliterate_urdu_to_roman
 
 GENRE_TAGS = {
-    "gaming": ["#gaming", "#gameplay", "#streamer", "#gamingmoments", "#gamer"],
+    "gaming": ["#gaming", "#clutch", "#gameplay", "#highlights", "#gamer"],
+    "islamic": ["#islamic", "#bayan", "#islamicreminder", "#deen", "#quran"],
+    "influencing": ["#mindset", "#motivation", "#creator", "#growth", "#perspective"],
+    "movie_shot": ["#cinema", "#moviescene", "#film", "#dialogue", "#cinematography"],
     "podcast": ["#podcast", "#interview", "#conversation", "#perspective", "#insights"],
     "interview": ["#interview", "#dialogue", "#storytime", "#discussion", "#insights"],
     "tutorial": ["#tutorial", "#howto", "#editing", "#guide", "#tips"],
@@ -41,6 +44,9 @@ GENRE_CTAS = {
     "debate_conversation": "Which side makes the stronger case? Weigh in below.",
     "news_discussion": "What is your take on this update? Share in the comments.",
     "gaming": "Drop your reaction below and share with a squad mate.",
+    "islamic": "JazakAllah Khair — save & share this reminder with others.",
+    "influencing": "Save this if it resonated — which point hit hardest?",
+    "movie_shot": "Which film or scene does this remind you of? Drop it below.",
 }
 
 

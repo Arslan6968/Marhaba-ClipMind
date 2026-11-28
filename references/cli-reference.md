@@ -9,7 +9,7 @@ Read this file only when you need detailed flag behavior, `--brain agent` JSON s
 - `trend <creator_or_topic> [--topic "..."] [--channel] [--count N] [--json] [--compact]`
 - `clip <url_or_path>`:
   - `--intent "<goal>"`, `--topic "<topic>"`, `--speaker "<name>"`, `--section "1:00:00-2:30:00"`
-  - `--preset clean|dynamic|podcast|gaming|educational|social_media`
+  - `--preset clean|dynamic|podcast|gaming|educational|social_media|islamic|cinematic`
   - `--aspect 9:16|16:9|1:1|original`, `--duration short|medium|long|any`, `--max-clips N`
   - `--caption-lang original|roman_urdu|none`, `--language en|ur`, `--whisper-model tiny|base|small`
   - `--brain auto|agent|local|rules|none`
@@ -17,13 +17,15 @@ Read this file only when you need detailed flag behavior, `--brain agent` JSON s
 - `remake <out_dir> [--clip 1 --clip 2] [--preset ...] [--aspect ...] [--caption-lang ...] [--hook "..."] [--title "..."] [--sfx] [--compact] [--json]`
 - `prune --days 7`
 
-## 2. Six Presets
+## 2. Eight Presets
 - `clean`: Steady framing, fade-in/out, minimal captions (business, keynotes, docs).
 - `dynamic`: Loudness-triggered 1.14x punch-ins + gold karaoke pop (vlogs, commentary).
 - `podcast`: Cosine-eased gliding speaker crop + emerald captions (podcasts, interviews).
 - `gaming`: Canny+YuNet stacked facecam + gameplay + punch-ins (gaming streams).
 - `educational`: Rounded vector Hook Card + steady clarity + key-stat popups (lectures, tutorials).
-- `social_media`: 5:4 dark canvas + sticky Hook Card + coral/white karaoke + punch-ins (general reels).
+- `social_media`: 5:4 dark canvas + sticky Hook Card + coral/white karaoke + punch-ins (influencers, reels).
+- `islamic`: Dignified emerald-gold reminder styling, steady framing, gentle fades, zero noisy jump-cuts (bayan, tafseer, reminders).
+- `cinematic`: Minimal filmic subtitles, fade transitions, clean progress-free frame (movie shots, scenes, short films).
 
 ## 3. `--brain agent` Batch Schema
 When `clip ... --brain agent` pauses with exit code `3`, read `STORY_TASK.json` + contact sheets and write `STORY_ANSWERS.json`:

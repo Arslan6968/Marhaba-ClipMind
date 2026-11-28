@@ -149,8 +149,15 @@ def build_domain_asr_prompt(
         parts.append(clean_topic)
     domain_ctx = " | ".join(p for p in parts if p)
     if language in ("ur", "hi") or (domain_ctx and is_urdu_text(domain_ctx)):
+        low_ctx = domain_ctx.lower()
+        if any(k in low_ctx for k in ("islam", "bayan", "quran", "hadith", "dua", "ramzan", "jummah", "بیان", "قرآن", "حدیث", "دعا")):
+            extra = "Quran, Hadith, Sunnah, Allah, Prophet, Bayan, Tafseer, Iman, Sabr, Tawakkul, Rizq, Dua."
+        elif any(k in low_ctx for k in ("game", "gaming", "gta", "pubg", "valorant", "clutch", "گیم")):
+            extra = "Clutch, Headshot, Squad, Lobby, Mission, Rank, Kill, Zone, Gameplay."
+        else:
+            extra = "Merit, Admission, Eligibility, Seats, Apply, Last Date, Percent, Tutorial, System, Video."
         base = "اردو اور English گفتگو۔ " + (f"موضوع: {domain_ctx}. " if domain_ctx else "")
-        return (base + "Merit, Admission, Eligibility, Seats, Apply, Last Date, Percent, Tutorial, System, Video.").strip()[:220]
+        return (base + extra).strip()[:220]
     if domain_ctx:
         return f"Context: {domain_ctx}. Clear punctuation and technical terminology."[:220]
     return CODE_SWITCHING_PROMPT[:220]

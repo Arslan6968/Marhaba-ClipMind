@@ -17,6 +17,9 @@ OBJECTIVE_PATTERNS = {
     "emotional": [r"\bemotion(al)?\b", r"\bsad\b", r"\bcry\b", r"\bheart\b", r"\btouching\b", r"\bdeep\b", r"جذباتی", r"رونا", r"دل"],
     "story": [r"\bstory\b", r"\bstories\b", r"\btale\b", r"\bincident\b", r"\bwhat happened\b", r"کہانی", r"واقعہ"],
     "discussion": [r"\bdiscussion\b", r"\bopinion\b", r"\binterview\b", r"\btalk\b", r"\bconversation\b", r"گفتگو"],
+    "islamic": [r"\bislamic\b", r"\bbayan\b", r"\btafseer\b", r"\bhadith\b", r"\bquran\b", r"\bdua\b", r"\bseerah\b", r"\bsunnah\b", r"\breminder\b", r"بیان", r"قرآن", r"حدیث", r"تفسیر", r"دعا"],
+    "gaming": [r"\bgaming\b", r"\bclutch\b", r"\bheadshot\b", r"\bgameplay\b", r"\brace\b", r"\bwipe\b", r"\bboss fight\b", r"گیم", r"کلچ"],
+    "movie_shot": [r"\bmovie\b", r"\bfilm\b", r"\bcinema(tic)?\b", r"\bscene\b", r"\bmovie shot\b", r"\bdrama\b", r"فلم", r"سین", r"ڈرامہ"],
 }
 
 # Bilingual English + Urdu + Roman-Urdu Concept Graph
@@ -37,7 +40,9 @@ TOPIC_CONCEPTS: List[Set[str]] = [
     {"career", "job", "resume", "interview", "freelance", "freelancing", "skills", "hiring", "promotion", "remote", "نوکری", "اسکلز", "فری لانسنگ"},
     {"marketing", "social media", "youtube", "tiktok", "instagram", "reels", "shorts", "algorithm", "views", "thumbnail", "hook", "viral", "content", "یوٹیوب", "ویوز", "تھمب نیل"},
     {"politics", "government", "election", "law", "policy", "country", "pakistan", "india", "america", "war", "peace", "حکومت", "سیاست", "الیکشن", "قانون"},
-    {"religion", "islam", "quran", "faith", "god", "allah", "prayer", "spirituality", "soul", "deen", "اسلام", "قرآن", "دین", "نماز"},
+    {"religion", "islam", "islamic", "quran", "faith", "god", "allah", "prayer", "spirituality", "soul", "deen", "bayan", "tafseer", "hadith", "sunnah", "sabr", "tawakkul", "rizq", "dua", "ramzan", "jummah", "اسلام", "قرآن", "دین", "نماز", "بیان", "تفسیر", "حدیث", "صبر", "دعا", "رزق"},
+    {"influencing", "influencer", "creator", "personal brand", "pov", "storytelling", "lifestyle", "routine", "advice", "habits", "self improvement", "عادت", "کامیابی", "اعتماد"},
+    {"movie", "cinema", "film", "movie shot", "scene", "cinematography", "actor", "director", "dialogue", "drama", "thriller", "twist", "ending", "فلم", "سین", "ڈرامہ", "کردار"},
     {"relationships", "marriage", "family", "love", "friendship", "parenting", "parents", "partner", "shadi", "rishta", "شادی", "خاندان", "محبت"},
     {"science", "physics", "space", "universe", "quantum", "biology", "evolution", "climate", "energy", "earth", "سائنس", "کائنات", "زمین"},
 ]
@@ -115,10 +120,15 @@ def parse_user_query(query: str) -> UserIntent:
         caption_lang = "none"
 
     preset = None
-    for p in ["clean", "dynamic", "podcast", "gaming", "educational", "social_media"]:
+    for p in ["clean", "dynamic", "podcast", "gaming", "educational", "social_media", "islamic", "cinematic"]:
         if re.search(rf"\b{p}\b", query_clean, re.I):
             preset = p
             break
+    if preset is None:
+        if re.search(r"\b(bayan|tafseer|hadith|quran|deen)\b", query_clean, re.I):
+            preset = "islamic"
+        elif re.search(r"\b(movie\s*shot|cinema|film\s*scene)\b", query_clean, re.I):
+            preset = "cinematic"
 
     return UserIntent(
         objective=detected_obj,
@@ -169,6 +179,22 @@ def get_intent_weights(intent: UserIntent) -> Dict[str, float]:
         weights["content_value"] = 0.22
         weights["context_completeness"] = 0.22
         weights["standalone_clarity"] = 0.18
+    elif obj == "islamic":
+        weights["context_completeness"] = 0.28
+        weights["standalone_clarity"] = 0.24
+        weights["content_value"] = 0.24
+        weights["boundary_quality"] = 0.12
+        weights["emotional_value"] = 0.04
+    elif obj == "gaming":
+        weights["emotional_value"] = 0.28
+        weights["visual_suitability"] = 0.20
+        weights["engagement_potential"] = 0.20
+        weights["hook_strength"] = 0.18
+    elif obj == "movie_shot":
+        weights["visual_suitability"] = 0.24
+        weights["emotional_value"] = 0.22
+        weights["context_completeness"] = 0.20
+        weights["boundary_quality"] = 0.16
 
     total = sum(weights.values())
     return {k: round(v / total, 4) for k, v in weights.items()}

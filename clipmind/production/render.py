@@ -211,7 +211,7 @@ def render_clip(
             margin_v_override=margin_v_override,
             creator_name=creator_name,
             topic_label=topic_badge,
-            motion_graphics=True,
+            motion_graphics=(preset_name != "cinematic"),
         )
         ass_path.write_text(ass_content, encoding="utf-8")
         use_ass_path: Optional[str] = str(ass_path)
@@ -223,6 +223,8 @@ def render_clip(
         "social_media": "0xFF3B3B",
         "gaming": "0x1E90FF",
         "podcast": "0x10B981",
+        "islamic": "0x10B981",
+        "cinematic": "0xE2E8F0",
         "dynamic": "0xFFD400",
         "clean": "0xE2E8F0",
     }.get(preset_name, "0x0BB9F5")
@@ -242,7 +244,7 @@ def render_clip(
         punch_windows=punches,
         fade=bool(preset.get("fade")),
         aspect_ratio=intent.aspect_ratio,
-        progress_bar=(preset_name != "clean"),
+        progress_bar=(preset_name not in ("clean", "cinematic")),
         progress_color=p_color,
     )
 

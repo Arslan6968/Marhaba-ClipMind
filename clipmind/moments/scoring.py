@@ -34,7 +34,7 @@ def _clean_title(text: str, max_words: int = 8) -> str:
 
 def evaluate_span(units: List[Dict[str, Any]], start_idx: int, end_idx: int, anchor_idx: int,
                   frames: List[Dict[str, Any]], cuts: List[float], has_faces: bool,
-                  intent: UserIntent) -> Dict[str, Any]:
+                  intent: UserIntent, genre: str = "general") -> Dict[str, Any]:
     """Computes scores across all 9 dimensions for a candidate thought span [start_idx, end_idx]."""
     span = units[start_idx:end_idx + 1]
     clip_start = max(0.0, span[0]["start"] - 0.15)
@@ -175,6 +175,16 @@ def evaluate_span(units: List[Dict[str, Any]], start_idx: int, end_idx: int, anc
     has_teaser = any(u.get("is_teaser") for u in span)
     if clip_start < 65.0 and (has_teaser or (q_count >= 2 and fact_hits == 0)):
         overall *= 0.68
+
+    # Genre-adaptive intelligence tuning inside the single universal engine
+    if genre == "islamic" and has_setup and has_payoff:
+        overall *= 1.08
+    elif genre == "gaming" and (max_spike >= 5.0 or max_chat >= 1.8):
+        overall *= 1.10
+    elif genre == "influencing" and hook_score >= 7.0 and 18.0 <= duration <= 45.0:
+        overall *= 1.08
+    elif genre == "movie_shot" and (has_beat or any(u.get("has_cut") for u in span)):
+        overall *= 1.10
 
     peak_u = max(span, key=lambda u: u["interest"])
     title_text = _clean_title(peak_u["text"], max_words=7)

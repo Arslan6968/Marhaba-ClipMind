@@ -157,3 +157,8 @@ def test_publishing_package():
     pub_slash = generate_publishing_package(clip_slash, ContentClassification(genre="lecture_education", confidence=0.8, recommended_preset="educational"), caption_lang="roman_urdu")
     assert "Male & Female" in pub_slash.title
     assert "kaun apply kar sakta" in pub_slash.ab_hooks[0].lower()
+
+    pub_isl = generate_publishing_package(clip, ContentClassification(genre="islamic", confidence=0.9, recommended_preset="islamic"))
+    assert "#islamic" in pub_isl.hashtags and "JazakAllah" in pub_isl.caption
+    pub_mov = generate_publishing_package(clip, ContentClassification(genre="movie_shot", confidence=0.9, recommended_preset="cinematic"))
+    assert "#cinema" in pub_mov.hashtags and "scene" in pub_mov.caption.lower()

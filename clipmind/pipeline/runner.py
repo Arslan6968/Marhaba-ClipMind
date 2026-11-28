@@ -364,6 +364,7 @@ class ClipMindPipeline:
             screen_activity=screen_activity,
             work_dir=temp_dir,
             rejected_out=rejected_clips,
+            genre=genre_info.genre,
         )
 
         if not candidate_clips:

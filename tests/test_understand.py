@@ -112,6 +112,24 @@ def test_classifier_12_genres():
     assert "BS Nursing Admission 2026" in prm
     assert "merit stipend" in prm
 
+    seg_isl = TranscriptSegment(id=0, start=0.0, end=5.0, text="Allah ki rehmat, Quran aur Hadith ki roshni mein sabr aur tawakkul ka bayan.")
+    res_isl = classify_content(Transcript(language="ur", segments=[seg_isl], full_text=seg_isl.text), cuts=[], duration=300.0)
+    assert res_isl.genre == "islamic"
+    assert res_isl.recommended_preset == "islamic"
+
+    seg_inf = TranscriptSegment(id=0, start=0.0, end=5.0, text="Stop doing this mistake if you want discipline, habits, confidence, and personal brand growth.")
+    res_inf = classify_content(Transcript(language="en", segments=[seg_inf], full_text=seg_inf.text), cuts=[], duration=180.0)
+    assert res_inf.genre == "influencing"
+    assert res_inf.recommended_preset == "social_media"
+
+    seg_mov = TranscriptSegment(id=0, start=0.0, end=5.0, text="That cinematic movie scene and film dialogue twist at the ending had incredible cinematography.")
+    res_mov = classify_content(Transcript(language="en", segments=[seg_mov], full_text=seg_mov.text), cuts=[float(i * 2) for i in range(40)], duration=120.0)
+    assert res_mov.genre == "movie_shot"
+    assert res_mov.recommended_preset == "cinematic"
+
+    assert parse_user_query("extract islamic bayan reminders").preset == "islamic"
+    assert parse_user_query("clip the best movie shot scene").preset == "cinematic"
+
 
 def test_brain_helpers():
     mode, _ = resolve_brain_mode("rules")

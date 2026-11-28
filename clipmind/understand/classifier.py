@@ -12,7 +12,27 @@ GENRE_LEXICON: Dict[str, set] = {
         "game", "gameplay", "kill", "killed", "died", "boss", "weapon", "level", "mission", "stream",
         "round", "glitch", "cheat", "speedrun", "gta", "minecraft", "fortnite", "valorant", "pubg",
         "cod", "match", "respawn", "spawn", "loot", "quest", "playthrough", "headshot", "noob", "pro",
-        "mar gya", "khel", "goli", "dushman", "stage", "کھیل", "گیم"
+        "clutch", "ace", "wipe", "squad", "lobby", "ranked", "chicken dinner", "1v4", "bot", "hacker",
+        "mar gya", "khel", "goli", "dushman", "stage", "maro", "banda", "کھیل", "گیم", "کلچ", "گیم پلے"
+    },
+    "islamic": {
+        "islam", "islamic", "allah", "quran", "hadith", "sunnah", "prophet", "muhammad", "nabi", "sahaba",
+        "bayan", "tafseer", "seerah", "dua", "namaz", "salah", "ramzan", "ramadan", "jummah", "zakat",
+        "hajj", "umrah", "iman", "taqwa", "sabr", "shukr", "rizq", "tawakkul", "akhirah", "jannah",
+        "deen", "masjid", "mufti", "molana", "tariq jameel", "israr", "ayat", "surah",
+        "اسلام", "قرآن", "حدیث", "سنت", "بیان", "تفسیر", "دعا", "نماز", "صبر", "رزق", "رمضان", "جمعہ", "دین"
+    },
+    "influencing": {
+        "mindset", "motivation", "motivate", "discipline", "habit", "habits", "personal brand", "creator",
+        "influencer", "followers", "growth", "success", "failure", "confidence", "stop doing", "truth is",
+        "nobody tells you", "reality", "lesson", "value", "hustle", "consistency", "focus", "pov",
+        "عادت", "کامیابی", "محنت", "اعتماد", "سوچ", "زندگی کا سبق", "kamyabi", "mehnat"
+    },
+    "movie_shot": {
+        "movie", "film", "cinema", "cinematic", "scene", "trailer", "actor", "actress", "director",
+        "script", "dialogue", "plot", "twist", "ending", "shot", "cinematography", "drama", "episode",
+        "season", "thriller", "soundtrack", "action scene", "bollywood", "hollywood", "lollywood",
+        "فلم", "سین", "ڈرامہ", "کردار", "اداکار", "کہانی"
     },
     "podcast": {
         "podcast", "episode", "guest", "welcome back", "welcome to", "host", "my guest",
@@ -80,6 +100,9 @@ PRESET_MAP = {
     "documentary": "clean",
     "news_discussion": "clean",
     "gaming": "gaming",
+    "islamic": "islamic",
+    "influencing": "social_media",
+    "movie_shot": "cinematic",
     "vlog": "dynamic",
     "entertainment": "dynamic",
     "general": "social_media",
@@ -134,8 +157,11 @@ def classify_content(transcript: Transcript, cuts: List[float], duration: float,
         scores["gaming"] += 2.0
         scores["entertainment"] += 2.5
         scores["vlog"] += 1.5
+        if not has_facecam and cuts_per_min > 18.0:
+            scores["movie_shot"] += 2.2
     elif cuts_per_min < 3.0:
         scores["lecture_education"] += 1.5
+        scores["islamic"] += 1.2
         scores["podcast"] += 1.5
         scores["speech_presentation"] += 1.5
 

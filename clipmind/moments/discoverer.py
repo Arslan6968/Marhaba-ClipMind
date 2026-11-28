@@ -61,6 +61,7 @@ def discover_moments(
     screen_activity: Optional[Dict[str, Any]] = None,
     work_dir: Optional[Path] = None,
     rejected_out: Optional[List[Dict[str, Any]]] = None,
+    genre: str = "general",
 ) -> List[ClipCandidate]:
     """Discovers, scores, deduplicates, and verifies complete narrative clips."""
     settings = get_settings()
@@ -117,7 +118,7 @@ def discover_moments(
                 if span_dur < min_dur or span_dur > max_dur:
                     continue
 
-                res = evaluate_span(units, s, e, a, frames, scene_cuts, has_faces, intent)
+                res = evaluate_span(units, s, e, a, frames, scene_cuts, has_faces, intent, genre=genre)
                 if best_span is None or res["overall_score"] > best_span["overall_score"]:
                     res["anchor_idx"] = a
                     best_span = res
