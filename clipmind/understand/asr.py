@@ -25,6 +25,7 @@ except Exception:
 from ..config import get_settings
 from ..schemas import Transcript, TranscriptSegment, WordToken
 from .urdu import CODE_SWITCHING_PROMPT, format_code_switching, is_urdu_text, sanitize_transcript_text
+from .arabic import is_arabic_ayat_text
 
 
 class InsufficientMemoryError(Exception):
@@ -106,7 +107,10 @@ class SpeechTranscriber:
                 continue
             last_text = text
 
-            if is_urdu_text(text) or info.language in ("ur", "hi"):
+            if is_arabic_ayat_text(text):
+                # Preserve Arabic Ayat without English code-switching distortion
+                text = sanitize_transcript_text(text)
+            elif is_urdu_text(text) or info.language in ("ur", "hi"):
                 text = format_code_switching(text)
             else:
                 text = sanitize_transcript_text(text)

@@ -30,7 +30,7 @@ def _check_ffmpeg_libass(ffmpeg_bin: str) -> bool:
 def cmd_doctor(args):
     """Checks dependencies, FFmpeg libass/RTL support, models, RAM, and JS runtimes."""
     settings = get_settings()
-    print("=== Marhaba ClipMind v3 Doctor ===")
+    print("=== Marhaba ClipMind v5 Doctor ===")
 
     ffmpeg_path = shutil.which(settings.ffmpeg_bin)
     ffmpeg_ok = bool(ffmpeg_path)

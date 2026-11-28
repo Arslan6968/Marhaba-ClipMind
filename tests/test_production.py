@@ -162,3 +162,24 @@ def test_publishing_package():
     assert "#islamic" in pub_isl.hashtags and "JazakAllah" in pub_isl.caption
     pub_mov = generate_publishing_package(clip, ContentClassification(genre="movie_shot", confidence=0.9, recommended_preset="cinematic"))
     assert "#cinema" in pub_mov.hashtags and "scene" in pub_mov.caption.lower()
+
+    # Qur'anic Ayat words must be detected and suppressed from burned-in ASS captions in both original & roman_urdu
+    bayan_words = [
+        WordToken(w="قُلْ", s=0.5, e=0.9),
+        WordToken(w="هُوَ", s=0.95, e=1.3),
+        WordToken(w="اللَّهُ", s=1.35, e=1.8),
+        WordToken(w="أَحَدٌ", s=1.85, e=2.4),
+        WordToken(w="یہ", s=3.2, e=3.5),
+        WordToken(w="توحید", s=3.55, e=4.0),
+        WordToken(w="کا", s=4.05, e=4.3),
+        WordToken(w="خلاصہ", s=4.35, e=4.8),
+        WordToken(w="ہے۔", s=4.85, e=5.2),
+    ]
+    for mode in ("original", "roman_urdu"):
+        ass_bayan = generate_ass_subtitles(
+            bayan_words, 0.5, 5.5, preset_name="islamic", caption_lang=mode,
+            hook_card_text="قُلْ هُوَ اللَّهُ أَحَدٌ",
+        )
+        assert "اللَّهُ" not in ass_bayan
+        assert "ql ho" not in ass_bayan.lower()
+        assert "Dialogue: 0," in ass_bayan

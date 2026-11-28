@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 from ..schemas import Transcript, UserIntent
 from ..media.audio import compute_db_spikes
 from ..understand.intent import calculate_topic_relevance, calculate_speaker_relevance
+from ..understand.arabic import is_arabic_ayat_text
 
 END_PUNCT = ".?!؟۔…"
 LAUGH_PATTERN = re.compile(r"(?:\bha(?:ha)+h?\b|\bhehe+\b|\blol\b|\blmao\b|ہا ?ہا|😂|🤣)", re.I)
@@ -79,6 +80,7 @@ def build_thought_units(transcript: Transcript) -> List[Dict[str, Any]]:
                 "confidence": round(avg_p, 2),
                 "tokens": [_clean_token(t.w) for t in current_tokens if _clean_token(t.w)],
                 "words": list(current_tokens),
+                "has_arabic_ayat": is_arabic_ayat_text(text),
             })
             current_tokens = []
 

@@ -130,6 +130,12 @@ def test_classifier_12_genres():
     assert parse_user_query("extract islamic bayan reminders").preset == "islamic"
     assert parse_user_query("clip the best movie shot scene").preset == "cinematic"
 
+    from clipmind.understand.arabic import is_arabic_ayat_text
+    assert is_arabic_ayat_text("بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ") is True
+    assert is_arabic_ayat_text("قل هو الله أحد") is True
+    assert is_arabic_ayat_text("یہ بہت ضروری بات ہے اور ہمیں صبر کرنا چاہیے") is False
+    assert is_arabic_ayat_text("Allah ki rehmat aur sabr par bayan") is False
+
 
 def test_brain_helpers():
     mode, _ = resolve_brain_mode("rules")

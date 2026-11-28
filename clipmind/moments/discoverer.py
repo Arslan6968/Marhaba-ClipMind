@@ -130,6 +130,20 @@ def discover_moments(
         return []
 
     deduped = deduplicate_candidates(raw_candidates, max_overlap=0.12, max_text_sim=0.52)
+    # Timeline spread: when >= 3 clips requested on videos > 4 min, promote chapter diversity
+    if intent.max_clips >= 3 and total_speech_dur > 240.0 and len(deduped) > intent.max_clips:
+        for c in deduped:
+            c["_bucket"] = int((c["start"] / max(1.0, total_speech_dur)) * 3)
+        diverse_pool = []
+        seen_buckets = set()
+        for c in deduped:
+            if c["_bucket"] not in seen_buckets:
+                diverse_pool.append(c)
+                seen_buckets.add(c["_bucket"])
+        for c in deduped:
+            if c not in diverse_pool:
+                diverse_pool.append(c)
+        deduped = diverse_pool
     pool = deduped[:max(intent.max_clips * 2, 8)]
 
     brain_mode, _ = resolve_brain_mode(intent.brain)

@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 
 from ..schemas import WordToken
 from ..understand.urdu import is_urdu_text, transliterate_urdu_to_roman, sanitize_transcript_text, format_urdu_rtl_ass
+from ..understand.arabic import is_arabic_ayat_text
 from .presets import get_preset
 from .motion import (
     motion_styles_block,
@@ -94,28 +95,38 @@ def generate_ass_subtitles(
     motion_graphics: bool = True,
 ) -> str:
     """Produces a complete ASS subtitle script with fontsdir-compatible Urdu RTL, Roman Urdu, karaoke, and motion graphics."""
-    if caption_lang == "none":
-        words_to_use: List[WordToken] = []
-    elif caption_lang == "roman_urdu":
-        words_to_use = []
-        for w in words:
-            rom_w = transliterate_urdu_to_roman(w.w)
-            if rom_w == "%" and words_to_use and re.search(r"\d$", words_to_use[-1].w):
-                prev = words_to_use[-1]
-                words_to_use[-1] = WordToken(w=f"{prev.w}%", s=prev.s, e=max(prev.e, w.e), p=prev.p)
-            else:
-                words_to_use.append(WordToken(w=rom_w, s=w.s, e=w.e, p=w.p))
-        if hook_card_text and is_urdu_text(hook_card_text):
-            hook_card_text = transliterate_urdu_to_roman(hook_card_text)
-    else:
-        words_to_use = words
-
     preset = get_preset(preset_name)
     cap = preset["captions"]
     k = height / 1920.0
     max_words = int(cap.get("max_words", 4))
 
-    groups = group_words_into_lines(words_to_use, clip_start, clip_end, max_words=max_words)
+    if caption_lang == "none":
+        groups: List[Dict[str, Any]] = []
+    else:
+        raw_groups = group_words_into_lines(words, clip_start, clip_end, max_words=max_words)
+        groups = []
+        for g in raw_groups:
+            orig_line = " ".join(w.w for w in g["words"])
+            # Never burn potentially mis-transcribed Arabic / Qur'anic Ayat as captions
+            if is_arabic_ayat_text(orig_line):
+                continue
+            if caption_lang == "roman_urdu":
+                rom_words: List[WordToken] = []
+                for w in g["words"]:
+                    rom_w = transliterate_urdu_to_roman(w.w)
+                    if rom_w == "%" and rom_words and re.search(r"\d$", rom_words[-1].w):
+                        prev = rom_words[-1]
+                        rom_words[-1] = WordToken(w=f"{prev.w}%", s=prev.s, e=max(prev.e, w.e), p=prev.p)
+                    else:
+                        rom_words.append(WordToken(w=rom_w, s=w.s, e=w.e, p=w.p))
+                g = dict(g, words=rom_words)
+            groups.append(g)
+
+        if hook_card_text and is_arabic_ayat_text(hook_card_text):
+            hook_card_text = None
+        elif hook_card_text and caption_lang == "roman_urdu" and is_urdu_text(hook_card_text):
+            hook_card_text = transliterate_urdu_to_roman(hook_card_text)
+
     all_text = " ".join(w.w for g in groups for w in g["words"])
     is_urdu = bool(URDU_REGEX.search(all_text))
 

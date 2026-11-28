@@ -49,14 +49,14 @@ def verify_and_adjust_clip(
             e_idx = i
             break
 
-    # 1. Beginning Setup Check: Snap backward up to 8s if starting on dependent opener or dangling pronoun
+    # 1. Beginning Setup Check: Snap backward if starting on dependent opener, pronoun, or Arabic Ayat boundary
     first_u = units[s_idx]
     first_tok = first_u["first_token"]
-    if (first_tok in DEPENDENT_OPENERS or first_tok in PRONOUN_OPENERS) and s_idx > 0:
+    if (first_tok in DEPENDENT_OPENERS or first_tok in PRONOUN_OPENERS or first_u.get("has_arabic_ayat")) and s_idx > 0:
         prev_u = units[s_idx - 1]
         gap = first_u["start"] - prev_u["end"]
         new_dur = e_time - prev_u["start"]
-        if gap <= 3.0 and (first_u["start"] - prev_u["start"]) <= 9.0 and new_dur <= 90.0:
+        if (prev_u.get("has_arabic_ayat") or first_tok in DEPENDENT_OPENERS or first_tok in PRONOUN_OPENERS) and gap <= 3.0 and (first_u["start"] - prev_u["start"]) <= 9.0 and new_dur <= 90.0:
             s_time = max(0.0, prev_u["start"] - 0.15)
             s_idx -= 1
             adjusted = True
@@ -86,6 +86,21 @@ def verify_and_adjust_clip(
             e_idx += 1
             adjusted = True
             notes.append(f"Extended end to include payoff/reaction: '{nxt_u['text'][:40]}'")
+
+    # 2b. Never cut mid-Ayat at clip end: extend to finish Ayat recitation cleanly
+    if e_idx + 1 < len(units) and units[e_idx].get("has_arabic_ayat") and units[e_idx + 1].get("has_arabic_ayat"):
+        while e_idx + 1 < len(units) and units[e_idx + 1].get("has_arabic_ayat") and (units[e_idx + 1]["end"] - s_time) <= 95.0:
+            e_idx += 1
+            e_time = units[e_idx]["end"] + 0.35
+            adjusted = True
+            notes.append("Extended end to keep Arabic Ayat recitation complete.")
+
+    # 2c. Trim excessive trailing silence cleanly (> 0.6s after last spoken word)
+    if units[e_idx].get("words"):
+        last_w_end = units[e_idx]["words"][-1].e
+        if e_time - last_w_end > 0.65:
+            e_time = last_w_end + 0.30
+            adjusted = True
 
     verified_span = units[s_idx:e_idx + 1]
     span_words: List[WordToken] = [

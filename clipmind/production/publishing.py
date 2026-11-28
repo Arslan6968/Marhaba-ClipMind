@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from ..schemas import ClipCandidate, PublishingPackage, ContentClassification
 from ..understand.urdu import is_urdu_text, transliterate_urdu_to_roman
+from ..understand.arabic import is_arabic_ayat_text
 
 GENRE_TAGS = {
     "gaming": ["#gaming", "#clutch", "#gameplay", "#highlights", "#gamer"],
@@ -74,6 +75,10 @@ def generate_publishing_package(clip: ClipCandidate, genre_info: ContentClassifi
 
     hook_clean = (clip.hook_text or title).replace("*", "").strip()
     event_clean = (clip.event_text or "").strip()
+    if is_arabic_ayat_text(hook_clean):
+        hook_clean = title
+    if is_arabic_ayat_text(event_clean):
+        event_clean = ""
     if caption_lang == "roman_urdu":
         if is_urdu_text(hook_clean):
             hook_clean = transliterate_urdu_to_roman(hook_clean)
@@ -96,7 +101,7 @@ def generate_publishing_package(clip: ClipCandidate, genre_info: ContentClassifi
         if len(ctag) >= 3 and ctag not in tags:
             tags.append(ctag)
 
-    raw_ab = list(clip.ab_hooks) if clip.ab_hooks else [hook_clean]
+    raw_ab = [h for h in (clip.ab_hooks or [hook_clean]) if not is_arabic_ayat_text(h)] or [hook_clean]
     ab_hooks = [
         (transliterate_urdu_to_roman(h) if (caption_lang == "roman_urdu" and is_urdu_text(h)) else h)
         for h in raw_ab

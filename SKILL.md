@@ -19,7 +19,7 @@ Read `references/cli-reference.md` only if you need detailed flag tables or JSON
 
 ## 2. Key Options
 - **Steering:** `--topic "..."`, `--speaker "..."`, `--section "1:00:00-2:30:00"`, `--duration short|medium|long`
-- **Language & Captions:** `--language ur|en`, `--caption-lang original|roman_urdu|none`, `--whisper-model tiny|base|small` (Urdu uses strict R-to-L BiDi; `roman_urdu` uses `Inter` karaoke).
+- **Language & Captions:** `--language ur|en`, `--caption-lang original|roman_urdu|none`, `--whisper-model tiny|base|small` (Urdu uses strict R-to-L BiDi; `roman_urdu` uses `Inter` karaoke; Arabic Qur'anic Ayat recitation is automatically detected, boundary-protected, and managed without burning raw Ayat captions).
 - **Styles (`--preset`):** `clean` | `dynamic` | `podcast` | `gaming` | `educational` | `social_media` | `islamic` | `cinematic` + `--aspect 9:16|16:9|1:1|original` + `--sfx` + `--fast`.
 - **Auto-Intelligence:** Understands 15 content genres (`islamic`, `gaming`, `influencing`, `movie_shot`, `podcast`, `interview`, `tutorial`, `lecture_education`, `news_discussion`, `debate_conversation`, `documentary`, `vlog`, `entertainment`, etc.) and adapts scoring, presets, and publishing packs automatically.
 - **Brain (`--brain`):** `auto` (local GGUF or deterministic rules) | `agent` (exit code 3 -> read `STORY_TASK.json` + sheets, write `STORY_ANSWERS.json`, re-run) | `rules`.

@@ -177,8 +177,12 @@ def evaluate_span(units: List[Dict[str, Any]], start_idx: int, end_idx: int, anc
         overall *= 0.68
 
     # Genre-adaptive intelligence tuning inside the single universal engine
-    if genre == "islamic" and has_setup and has_payoff:
-        overall *= 1.08
+    has_ayat_and_expl = any(u.get("has_arabic_ayat") for u in span) and any(not u.get("has_arabic_ayat") for u in span)
+    if genre == "islamic":
+        if has_setup and has_payoff:
+            overall *= 1.08
+        if has_ayat_and_expl:
+            overall *= 1.12  # reward complete Ayat recitation + explanation/lesson
     elif genre == "gaming" and (max_spike >= 5.0 or max_chat >= 1.8):
         overall *= 1.10
     elif genre == "influencing" and hook_score >= 7.0 and 18.0 <= duration <= 45.0:
@@ -186,9 +190,11 @@ def evaluate_span(units: List[Dict[str, Any]], start_idx: int, end_idx: int, anc
     elif genre == "movie_shot" and (has_beat or any(u.get("has_cut") for u in span)):
         overall *= 1.10
 
-    peak_u = max(span, key=lambda u: u["interest"])
+    non_ayat_units = [u for u in span if not u.get("has_arabic_ayat")]
+    peak_u = max(non_ayat_units or span, key=lambda u: u["interest"])
+    hook_pref = next((u for u in non_ayat_units if u["start"] - clip_start <= 10.0), early_hook_unit)
     title_text = _clean_title(peak_u["text"], max_words=7)
-    hook_line = early_hook_unit["text"][:130]
+    hook_line = hook_pref["text"][:130]
     ab_hooks = [
         hook_line,
         first_unit["text"][:130] if first_unit["text"] != hook_line else last_unit["text"][:130],
